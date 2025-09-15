@@ -16,13 +16,23 @@ class ContentState(BaseModel):
 
 
 def node_generate_content(state: ContentState):
+    """
+    生成整篇文本内容（基于标题、大纲和上下文）
+    Args:
+        state (ContentState): 包含标题、大纲和上下文的状态对象
+
+    Returns:
+        dict: 包含生成的文本内容的字典
+    """
     title = state.title
     outline = state.outline
     context = state.context
 
+    # 生成整篇文本内容（基于标题、大纲和上下文）
     content = content_agent.generate_content(title, outline, context)
 
     return {"content": content}
+
 
 # Construct the graph
 wf = StateGraph(ContentState)

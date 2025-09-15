@@ -5,6 +5,7 @@ from ...api.schemas import KnowledgeBaseFile
 from ...kb.utils import KnowledgeBase
 from ...kb.query_chroma import Query
 from ...ai.agent import KbAgent, OutlineAgent
+import json
 
 kb = KnowledgeBase()
 qry = Query()
@@ -24,7 +25,7 @@ so the maximum reference knowledge base num is 6; minimun is 0.
 """
 
 
-class OutlineState(BaseModel):
+class RewriteOutlineState(BaseModel):
     title: str
     selectedKbList: List[KnowledgeBaseFile]
     policy: str  # TODO: change it later
@@ -32,7 +33,7 @@ class OutlineState(BaseModel):
 
 
 # 节点：根据标题选择知识库
-def node_select_kb(state: OutlineState):
+def node_select_kb(state: RewriteOutlineState):
     """
     根据标题选择知识库
     :param state: title、selectedKbList（用户选择的知识库）
@@ -80,7 +81,7 @@ def node_select_kb(state: OutlineState):
     return {"selectedKbList": total_selected_bfs}
 
 
-def node_generate_outline(state: OutlineState):
+def node_rewrite_outline(state: RewriteOutlineState):
     """
     Reads content from the selected knowledge base files,
     constructs a RAG prompt, and generates the final outline.
@@ -97,30 +98,27 @@ def node_generate_outline(state: OutlineState):
     selected_kb_contents = kb.get_all_kb_content(selected_bfs)
     # 生成摘要
     selected_kb_abstract = kb_agent.abstract_kb_lst(title, selected_kb_contents)
-    # 生成大纲
-    final_outline = outline_agent.generate_outline(title, selected_kb_abstract)
-
-    # TODO: test only, delete later
-    print("--- 生成的大纲 (final_outline): ---")
-    print(final_outline)
-    print("----------------------------------------------------")
+    # 重新生成大纲
+    final_outline = outline_agent.get_rewrite_outline_prompt(
+        title, selected_kb_abstract, state.outline
+    )
 
     return {"policy": selected_kb_abstract, "outline": final_outline}
 
 
 # Construct the graph
-wf = StateGraph(OutlineState)
+wf = StateGraph(RewriteOutlineState)
 # 添加节点
 wf.add_node("select_kb", node_select_kb)
-wf.add_node("generate_outline", node_generate_outline)
+wf.add_node("rewrite_outline", node_rewrite_outline)
 
 # 添加边
 # 从入口节点到选择知识库节点
 wf.set_entry_point("select_kb")
 # 从选择知识库节点到生成大纲节点
-wf.add_edge("select_kb", "generate_outline")
+wf.add_edge("select_kb", "rewrite_outline")
 # 从生成大纲节点到结束
-wf.add_edge("generate_outline", "__end__")
+wf.add_edge("rewrite_outline", "__end__")
 # 编译工作流
 app = wf.compile()
 
