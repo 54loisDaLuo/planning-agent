@@ -319,6 +319,7 @@ class ContentAgent:
                 messages=messages,
                 response_format={"type": "json_object"},
                 max_tokens=8192,
+<<<<<<< HEAD
             )
             content_str = completion.choices[0].message.content
 
@@ -360,6 +361,8 @@ class ContentAgent:
                 messages=messages,
                 response_format={"type": "json_object"},
                 max_tokens=8192,
+=======
+>>>>>>> b4fa912... 新增注释、代码格式化、重写xx功能bug修复、prompt修改等
             )
             content_str = completion.choices[0].message.content
 

@@ -29,6 +29,7 @@ def node_generate_content(state: ContentState):
     outline = state.outline
     context = state.context
 
+<<<<<<< HEAD
     print("--------------------------")
     print(outline)
     print("--------------------------")
@@ -56,10 +57,15 @@ def node_generate_content(state: ContentState):
     else:
         # 大纲生成全文
         content = content_agent.generate_content(title, outline, context)
+=======
+    # 生成整篇文本内容（基于标题、大纲和上下文）
+    content = content_agent.generate_content(title, outline, context)
+>>>>>>> b4fa912... 新增注释、代码格式化、重写xx功能bug修复、prompt修改等
 
     return {"content": content}
 
 
+<<<<<<< HEAD
 def has_content_in_outline(outline: str) -> bool:
     """
     判断outline中是否含有content字段
@@ -207,6 +213,8 @@ def extract_full_content_with_structure(outline_data):
     return "\n".join(structure_lines)
 
 
+=======
+>>>>>>> b4fa912... 新增注释、代码格式化、重写xx功能bug修复、prompt修改等
 # Construct the graph
 wf = StateGraph(ContentState)
 

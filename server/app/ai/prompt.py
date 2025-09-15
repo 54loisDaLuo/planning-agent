@@ -166,6 +166,7 @@ class Prompt:
         return [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
+<<<<<<< HEAD
         ]
 
     @staticmethod
@@ -243,6 +244,85 @@ class Prompt:
             {"role": "user", "content": user_content},
         ]
 
+=======
+        ]
+
+    @staticmethod
+    def get_rewrite_outline_prompt(
+        title: str, kb_abstract: str = "", original_outline: str = ""
+    ) -> list[dict]:
+        """
+        Generates a prompt to rewrite an outline with reference to the original outline.
+
+        重写大纲
+        :param title: 专项规划标题
+        :param original_outline: 原有大纲
+        :param kb_abstract: 知识库摘要
+        :return: 提示列表
+        """
+        # The basic requirements for outline generation
+        base_requirements = (
+            "1. 以结构化 JSON 格式输出，不要输出任何解释或说明。\n"
+            "2. 一级标题为章节标题（如“一、形式需求”），每个一级标题下有若干二级标题（如“（一）发展基础”），二级标题放在 children 字段的数组里。最少也要列三个一级标题\n"  # this can be changed later
+            "3. 示例格式：\n"
+            "[\n"
+            "  {\n"
+            '    "title": "一、形式需求",\n'
+            '    "children": [\n'
+            '      { "title": "（一）发展基础" },\n'
+            '      { "title": "（二）机遇与挑战" }\n'
+            "    ]\n"
+            "  },\n"
+            "  {\n"
+            '    "title": "二、总体要求",\n'
+            '    "children": [\n'
+            '      { "title": "（一）指导思想" },\n'
+            '      { "title": "（二）发展原则" },\n'
+            '      { "title": "（三）发展布局" },\n'
+            '      { "title": "（四）发展目标" }\n'
+            "    ]\n"
+            "  }\n"
+            "]\n"
+            "4. 只输出有效的 JSON 数据，不要有任何多余的文字。\n"
+            "5. **重要提示**：请基于标题和参考资料重新构思大纲结构，原有大纲仅供参考，不要仿照其章节安排和标题命名。\n"
+        )
+
+        # Dynamically construct user instructions based on whether context is provided
+        if not kb_abstract or not kb_abstract.strip():
+            # Without context
+            user_content = (
+                f"我正在为“{title}”重新生成专项规划提纲。\n\n"
+                f"这是原有的大纲结构，供你参考理解主题范围：\n"
+                f"```\n"
+                f"{original_outline}\n"
+                f"```\n\n"
+                f"请注意：这个原有大纲仅供参考，帮助你理解大纲结构，但请基于标题重新构思全新的结构。\n"
+                f"要求如下：\n"
+                f"{base_requirements}"
+            )
+        else:
+            # With context
+            user_content = (
+                f"我正在为“{title}”重新生成专项规划提纲。\n\n"
+                f"这是原有的大纲结构，供你参考理解大纲结构：\n"
+                f"```\n"
+                f"{original_outline}\n"
+                f"```\n\n"
+                f"这是供你参考的知识库摘要：\n"
+                f"```\n"
+                f"{kb_abstract}\n"
+                f"```\n\n"
+                f"请注意：原有大纲仅供参考，帮助你理解主题范围，但请基于标题和参考资料重新构思全新的结构。\n"
+                f"请结合参考资料，并围绕标题生成提纲，要求如下：\n"
+                f"{base_requirements}"
+            )
+
+        return [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ]
+
+>>>>>>> b4fa912... 新增注释、代码格式化、重写xx功能bug修复、prompt修改等
     @staticmethod
     def get_content_prompt(title: str, outline: str, context: str = "") -> list[dict]:
         """
@@ -308,6 +388,7 @@ class Prompt:
                 "content": "你是一位顶级的政策研究和公文撰写专家，擅长将结构化的要点扩展为内容详实、逻辑严谨的段落。",
             },
             {"role": "user", "content": user_content},
+<<<<<<< HEAD
         ]
 
     @staticmethod
@@ -405,6 +486,8 @@ class Prompt:
                 "content": "你是一位顶级的政策研究和规划创作专家，擅长从零开始、完全重新构思和创作专项规划内容。你能够基于标题和大纲要求，彻底摆脱原文限制，以全新的视角、表达方式和论述逻辑创作出专业、创新、深度的高质量内容。你特别擅长避免与原文有任何雷同，确保每次创作都是独特且具有明显差异的。",
             },
             {"role": "user", "content": user_content},
+=======
+>>>>>>> b4fa912... 新增注释、代码格式化、重写xx功能bug修复、prompt修改等
         ]
 
     @staticmethod
@@ -534,7 +617,11 @@ class Prompt:
         """
         Generates a prompt to rewrite a paragraph of content.
 
+<<<<<<< HEAD
         单个段落内容重写
+=======
+        生成内容重写提示
+>>>>>>> b4fa912... 新增注释、代码格式化、重写xx功能bug修复、prompt修改等
         :param plan_title: 专项规划标题
         :param section_title: 一级标题
         :param subtitle_title: 二级标题
