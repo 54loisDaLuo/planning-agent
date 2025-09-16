@@ -311,6 +311,103 @@ class Prompt:
         ]
 
     @staticmethod
+    def get_rewrite_content_prompt(
+        title: str, outline: str, original_full_content: str, context: str = ""
+    ) -> list[dict]:
+        """
+        Generates a prompt to completely rewrite and reconceptualize the entire content.
+        If context is provided, it will be included as a reference.
+
+        完全重新构思重写内容
+        :param title: 专项规划标题
+        :param outline: 专项规划提纲
+        :param original_full_content: 原始内容（仅作参考，不作为修改基础）
+        :param context: 知识库摘要
+        :return: 提示列表
+        """
+        # The basic instructions define the core tasks and output formats
+        base_requirements = (
+            "1. **核心任务**：请完全重新构思并创作专项规划内容，这不是在原文基础上优化，而是要从零开始、以全新的视角和表达方式重新创作。"
+            "2. **创作原则**：\n"
+            "   - 完全摆脱原文的表达方式、句式结构和段落组织\n"
+            "   - 基于大纲要求，但用全新的逻辑思路和论述角度组织内容\n"
+            "   - 采用完全不同的论述风格、专业术语选择和表达习惯\n"
+            "   - 确保内容深度和专业性，但必须避免与原文有任何雷同之处\n"
+            "3. **避免雷同的具体要求**：\n"
+            "   - 不要使用原文中的相同句式或段落开头\n"
+            "   - 不要沿用原文的论述逻辑和段落衔接方式\n"
+            "   - 不要重复使用原文特有的专业术语组合\n"
+            "   - 确保整体结构和表达风格与原文有明显差异\n"
+            "4. **输出格式**：你的输出必须是一个单一的、结构化的JSON对象。此JSON对象应包含一个名为 `content_outline` 的键，其值的结构与我提供的大纲完全一致，但在每个二级标题的对象中，增加一个名为 `content` 的键，值为你的全新创作内容。\n"
+            "5. **示例格式**：\n"
+            "   {\n"
+            '     "content_outline": [\n'
+            "       {\n"
+            '         "title": "一、发展基础与面临形势",\n'
+            '         "children": [\n'
+            '           { "title": "（一）发展基础", "content": "这里是全新创作的发展基础内容..." },\n'
+            '           { "title": "（二）面临形势", "content": "这里是全新创作的面临形势分析..." }\n'
+            "         ]\n"
+            "       }\n"
+            "     ]\n"
+            "   }\n"
+            "6. **严格要求**：除了这个JSON对象，绝对不要包含任何解释、注释、代码块标记或其他多余的文字。"
+        )
+
+        # Dynamically construct user instructions based on whether the context is empty or not
+        if not context or not context.strip():
+            # empty
+            user_content = (
+                f"我正在为《{title}》创作全新的专项规划内容。\n\n"
+                f"这是规划的大纲结构：\n"
+                f"```json\n"
+                f"{outline}\n"
+                f"```\n\n"
+                f"**参考材料**：以下是一份现有材料，仅供你了解主题背景和基本信息，**请勿直接参考其表达方式和结构**：\n"
+                f"```text\n"
+                f"{original_full_content}\n"
+                f"```\n\n"
+                f"**重要提醒**：上述参考材料仅用于了解主题背景，你需要完全重新构思内容：\n"
+                f"- 避免使用相似的句式、段落结构和表达方式\n"
+                f"- 不要沿用原文的论述逻辑和专业术语组合\n"
+                f"- 确保整体表达风格与原文有明显差异\n\n"
+                f"请严格遵循以下要求：\n"
+                f"{base_requirements}"
+            )
+        else:
+            # not empty
+            user_content = (
+                f"我正在为《{title}》创作全新的专项规划内容。\n\n"
+                f"这是规划的大纲结构：\n"
+                f"```json\n"
+                f"{outline}\n"
+                f"```\n\n"
+                f"**参考资料**：以下是一份现有材料，仅供你了解主题背景和基本信息，**请勿直接参考其表达方式和结构**：\n"
+                f"```text\n"
+                f"{original_full_content}\n"
+                f"```\n\n"
+                f"**知识库摘要**：以下是对外部的参考资料，可以作为你创作的重要依据：\n"
+                f"```text\n"
+                f"{context}\n"
+                f"```\n\n"
+                f"**重要提醒**：现有材料仅用于了解主题背景，你需要完全重新构思内容：\n"
+                f"- 避免使用相似的句式、段落结构和表达方式\n"
+                f"- 不要沿用原文的论述逻辑和专业术语组合\n"
+                f"- 确保整体表达风格与原文有明显差异\n"
+                f"- 知识库摘要可以作为重要参考，但仍需保持创作的新颖性\n\n"
+                f"请在参考上述资料的基础上，严格遵循以下要求：\n"
+                f"{base_requirements}"
+            )
+
+        return [
+            {
+                "role": "system",
+                "content": "你是一位顶级的政策研究和规划创作专家，擅长从零开始、完全重新构思和创作专项规划内容。你能够基于标题和大纲要求，彻底摆脱原文限制，以全新的视角、表达方式和论述逻辑创作出专业、创新、深度的高质量内容。你特别擅长避免与原文有任何雷同，确保每次创作都是独特且具有明显差异的。",
+            },
+            {"role": "user", "content": user_content},
+        ]
+
+    @staticmethod
     def get_rewrite_subtitle_prompt(
         plan_title: str,
         full_outline: list,
@@ -426,7 +523,7 @@ class Prompt:
         ]
 
     @staticmethod
-    def get_rewrite_content_prompt(
+    def get_rewrite_paragraph_prompt(
         plan_title: str,
         section_title: str,
         subtitle_title: str,
@@ -437,7 +534,7 @@ class Prompt:
         """
         Generates a prompt to rewrite a paragraph of content.
 
-        生成内容重写提示
+        单个段落内容重写
         :param plan_title: 专项规划标题
         :param section_title: 一级标题
         :param subtitle_title: 二级标题

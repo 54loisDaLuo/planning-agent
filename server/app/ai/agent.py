@@ -335,6 +335,47 @@ class ContentAgent:
             print(f"[错误] 调用AI生成内容时出错: {e}")
             return {"error": str(e)}
 
+    def rewrite_content(
+        self, title: str, outline: str, original_full_content: str, context: str = ""
+    ) -> list[dict]:
+        # def rewrite_content(
+        #     self, title: str, outline: str, original_full_content: str, context: str = ""
+        # ) -> list[dict]:
+        """
+        Rewrites the full content of a document.
+
+        重写整篇文档的内容
+        :param title: 专项规划标题
+        :param outline: 完整大纲
+        :param original_full_content: 原始全文内容
+        :param context: 政策背景
+        :return: 提示列表
+        """
+        try:
+            messages = Prompt.get_rewrite_content_prompt(
+                title, outline, original_full_content, context
+            )
+            completion = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                response_format={"type": "json_object"},
+                max_tokens=8192,
+            )
+            content_str = completion.choices[0].message.content
+
+            parsed_json = json.loads(content_str)
+            print("--- AI返回的content JSON ---")
+            print(parsed_json)
+
+            return parsed_json
+
+        except json.JSONDecodeError:
+            print(f"[错误] AI返回的内容不是有效的JSON格式: {content_str}")
+            return {"error": "JSON Decode Error", "raw_content": content_str}
+        except Exception as e:
+            print(f"[错误] 调用AI生成内容时出错: {e}")
+            return {"error": str(e)}
+
     def rewrite_content_paragraph(
         self,
         plan_title: str,
@@ -356,7 +397,7 @@ class ContentAgent:
         :param user_requirement: 用户要求
         :return: 提示列表
         """
-        messages = Prompt.get_rewrite_content_prompt(
+        messages = Prompt.get_rewrite_paragraph_prompt(
             plan_title,
             section_title,
             subtitle_title,
