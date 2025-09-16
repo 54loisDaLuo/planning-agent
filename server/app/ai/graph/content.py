@@ -29,13 +29,6 @@ def node_generate_content(state: ContentState):
     outline = state.outline
     context = state.context
 
-<<<<<<< HEAD
-    print("--------------------------")
-    print(outline)
-    print("--------------------------")
-    print(has_content_in_outline(outline))
-    print("--------------------------")
-
     if has_content_in_outline(outline):
         # 解析outline JSON
         outline_data = json.loads(outline)
@@ -57,15 +50,10 @@ def node_generate_content(state: ContentState):
     else:
         # 大纲生成全文
         content = content_agent.generate_content(title, outline, context)
-=======
-    # 生成整篇文本内容（基于标题、大纲和上下文）
-    content = content_agent.generate_content(title, outline, context)
->>>>>>> b4fa912... 新增注释、代码格式化、重写xx功能bug修复、prompt修改等
 
     return {"content": content}
 
 
-<<<<<<< HEAD
 def has_content_in_outline(outline: str) -> bool:
     """
     判断outline中是否含有content字段
@@ -93,6 +81,17 @@ def has_content_in_outline(outline: str) -> bool:
         return check_content_recursive(outline_data)
     except json.JSONDecodeError:
         return False
+
+
+def node_has_content_in_outline(state: ContentState) -> bool:
+    """
+    判断outline中是否含有content字段
+    Args:
+        outline (str): JSON格式的outline字符串
+    Returns:
+        bool: 如果含有content字段返回True，否则返回False
+    """
+    return has_content_in_outline(state.outline)
 
 
 def remove_content_from_outline(outline: str) -> str:
@@ -213,8 +212,6 @@ def extract_full_content_with_structure(outline_data):
     return "\n".join(structure_lines)
 
 
-=======
->>>>>>> b4fa912... 新增注释、代码格式化、重写xx功能bug修复、prompt修改等
 # Construct the graph
 wf = StateGraph(ContentState)
 
