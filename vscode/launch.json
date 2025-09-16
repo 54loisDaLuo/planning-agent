@@ -1,0 +1,31 @@
+{
+  "configurations": [
+      {
+          "name": "Containers: Python - Fastapi",
+          "type": "docker",
+          "request": "launch",
+          "preLaunchTask": "docker-run: debug",
+          "python": {
+              "pathMappings": [
+                  {
+                      "localRoot": "${workspaceFolder}",
+                      "remoteRoot": "/app"
+                  }
+              ],
+              "projectType": "fastapi"
+          }
+      },
+      {
+          "name": "Python: FastAPI (Local)",
+          "type": "python",
+          "request": "launch",
+          "module": "uvicorn",
+          "args": ["app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"],
+          "env": {
+              "PYTHONPATH": "${workspaceFolder}/server"
+          },
+          "console": "integratedTerminal",
+          "cwd": "${workspaceFolder}/server"
+      }
+  ]
+}
