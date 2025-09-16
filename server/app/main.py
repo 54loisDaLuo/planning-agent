@@ -5,8 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 from .api import generate, base
+import logging
 
 load_dotenv()
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler("../app.log")],
+)
 
 app = FastAPI(title="Planning Agent API", version="1.0.0")
 

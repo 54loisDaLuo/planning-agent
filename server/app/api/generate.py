@@ -25,7 +25,7 @@ from ..ai.graph.outline import app as outline_graph_app
 from ..ai.graph.content import app as content_graph_app
 from ..ai.graph.rewrite_outline import app as rewrite_outline_graph_app
 import traceback
-
+import logging
 
 generate_router = APIRouter()
 
@@ -42,6 +42,7 @@ async def router_classify_title(req: ClassifyTitleRequest):
     :param req: ClassifyTitleRequest -> title: str
     :return: ClassifyTitleReturn -> valid: bool
     """
+    logging.info(f"router_classify_title, req:\n{req}")
     try:
         result = classify_agent.classify_title(req.title)
         return ClassifyTitleReturn(
@@ -68,6 +69,7 @@ async def router_generate_outline(req: GenerateOutlineRequest):
                     ,policy: str(description="生成的政策总结"),
                     ,kb_list: List[KnowledgeBase](description="使用的知识库")
     """
+    logging.info(f"router_generate_outline, req:\n{req}")
     try:
         # The initial state requires 'title' and 'selectedKbList'.
         # The 'policy' and 'outline' fields will be populated by the graph.
@@ -115,7 +117,7 @@ async def router_rewrite_outline(req: RewriteOutlineRequest):
                     ,policy: str(description="生成的政策总结")
                     ,kb_list: List[KnowledgeBaseFile](description="使用的知识库")
     """
-    # TODO:没有把上一次大纲内容传进去
+    logging.info(f"router_rewrite_outline, req:\n{req}")
     try:
         # The initial state requires 'title' and 'selectedKbList'.
         # The 'policy' and 'outline' fields will be populated by the graph.
@@ -162,9 +164,7 @@ async def router_generate_content(req: GenerateContentRequest):
                     ,title: str(description="用户输入的标题")
                     ,content: str(description="生成的内容")
     """
-    print("---------------- req --------------")
-    print(req)
-    print("-----------------------------------")
+    logging.info(f"router_generate_content, req:\n{req}")
     try:
         initial_state = {
             "title": req.title,
@@ -205,10 +205,7 @@ async def router_rewrite_subtitle(req: RewriteSubtitleRequest):
                 -> success: bool
                     ,new_title: str(description="重写后的二级标题")
     """
-
-    print("---------------- req --------------")
-    print(req)
-    print("-----------------------------------")
+    logging.info(f"router_rewrite_subtitle, req:\n{req}")
     try:
         new_title = outline_agent.rewrite_subtitle(
             plan_title=req.plan_title,
@@ -239,6 +236,7 @@ async def router_rewrite_section(req: RewriteSectionRequest):
                 -> success: bool
                     ,new_section: str(description="重写后的章节")
     """
+    logging.info(f"router_rewrite_section, req:\n{req}")
     try:
         new_section = outline_agent.rewrite_section(
             plan_title=req.plan_title,
@@ -275,6 +273,7 @@ async def router_rewrite_content_paragraph(req: RewriteContentParagraphRequest):
                 -> success: bool
                     ,new_content: str(description="重写后的段落内容")
     """
+    logging.info(f"router_rewrite_content_paragraph, req:\n{req}")
     try:
         new_content = content_agent.rewrite_content_paragraph(
             plan_title=req.plan_title,
@@ -291,23 +290,3 @@ async def router_rewrite_content_paragraph(req: RewriteContentParagraphRequest):
         )
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"重写段落内容失败: {str(e)}")
-
-
-# @generate_router.post("/api/outline")
-# async def router_generate_outline(req: GenerateOutlineRequest):
-#     try:
-#         # # convert user selection into ids
-#         # selected_bfs = req.selectedKbList
-#         # selected_ids = kb.bf_to_id_lst(selected_bfs)
-
-#         # result = agent.test_api()
-
-#         result = outline_agent.generate_outline(req.title)
-#         return GenerateOutlineReturn(
-#             success=True,
-#             title=req.title,
-#             outline=result
-#         )
-#     except Exception as e:
-#         print("(from router_generate_outline, generate.py)生成大纲异常：", e)
-#         raise HTTPException(status_code=500, detail=f"生成失败: {str(e)}, (from router_generate_outline, generate.py)")

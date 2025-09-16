@@ -101,3 +101,18 @@ class RewriteContentParagraphRequest(BaseModel):
 class RewriteContentParagraphReturn(BaseModel):
     success: bool = True
     new_content: str
+
+
+# For /api/download
+class DownloadRequest(BaseModel):
+    title: str
+    outline: str
+    policy: str
+    format: str = "docx"  # 支持 docx, txt, pdf
+    download_type: str = "outline"  # (下载类型：outline-仅大纲，full-全文)
+
+
+class DownloadReturn(BaseModel):
+    success: bool
+    message: str
+    file_name: Optional[str] = None

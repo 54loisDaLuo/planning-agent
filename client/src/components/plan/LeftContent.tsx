@@ -87,7 +87,14 @@ const LeftContent = ({
             />
             <div className="flex flex-wrap gap-2">
               <WriteContentBtn onClick={onGenerateContent} />
-              <DownloadBtn />
+              {data && (
+                <DownloadBtn
+                  title={data.title}
+                  outline={JSON.stringify(data.outline)}
+                  policy={data.policy}
+                  downloadType="outline"
+                />
+              )}
             </div>
           </>
         ) : (
@@ -99,7 +106,14 @@ const LeftContent = ({
             />
             <div className="flex flex-wrap gap-2">
               <FinishPlanningBtn />
-              <DownloadBtn />
+              {data && (
+                <DownloadBtn
+                  title={data.title}
+                  outline={JSON.stringify(fullContent?.content || data.outline)}
+                  policy={data.policy}
+                  downloadType="full"
+                />
+              )}
             </div>
           </>
         )}
