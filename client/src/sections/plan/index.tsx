@@ -24,6 +24,15 @@ const Plan = () => {
   const [loading, setLoading] = useState(false);
   const { selectedKbList } = useKnowledgeBase();
   const [pageMode, setPageMode] = useState<PageMode>('outline');
+  // 在Plan组件中添加状态
+  const [webSearchResults, setWebSearchResults] = useState<
+    Array<{
+      url: string;
+      title: string;
+      content: string;
+      score: number;
+    }>
+  >([]);
 
   // Content part
   const [fullContent, setFullContent] =
@@ -211,6 +220,7 @@ const Plan = () => {
             onRewriteContent={handleRewriteAllContent}
             isRewritingContent={isRewritingContent}
             onOutlineUpdate={handleOutlineUpdate}
+            onWebSearchResults={setWebSearchResults} // 添加这行
           />
         </div>
         {/* drag dividing line */}
@@ -227,7 +237,7 @@ const Plan = () => {
           className="bg-white rounded-lg border border-plagt-blue-1 p-6 shadow-sm flex flex-col h-full min-h-0"
           style={{ width: `${100 - leftWidth}%` }}
         >
-          <RightContent />
+          <RightContent webSearchResults={webSearchResults} />
         </div>
       </div>
       {/* modile layout */}
@@ -245,10 +255,11 @@ const Plan = () => {
             onRewriteContent={handleRewriteAllContent}
             isRewritingContent={isRewritingContent}
             onOutlineUpdate={handleOutlineUpdate}
+            onWebSearchResults={setWebSearchResults} // 添加这行
           />
         </div>
         <div className="bg-white rounded-lg border border-plagt-blue-1 p-6 shadow-sm flex flex-col h-[80vh] min-h-0">
-          <RightContent />
+          <RightContent webSearchResults={webSearchResults} />
         </div>
       </div>
     </main>

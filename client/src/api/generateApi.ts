@@ -148,3 +148,22 @@ export const rewriteContentParagraph = async (
   if (!res.ok) throw new Error('重写段落内容失败: generateApi.ts');
   return await res.json(); // Returns { success: boolean, new_content: string }
 };
+
+// 添加联网搜索接口
+export const webSearchParagraph = async (
+  plan_title: string,
+  section_title: string,
+  subtitle_title: string
+) => {
+  const res = await fetch(`${API_BASE_URL}/api/web_search/paragraph`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      plan_title,
+      section_title,
+      subtitle_title,
+    }),
+  });
+  if (!res.ok) throw new Error('联网搜索失败: generateApi.ts');
+  return await res.json(); // Returns { success: boolean, web_search_infos: list[dict] }
+};

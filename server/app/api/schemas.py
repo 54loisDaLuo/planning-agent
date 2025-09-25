@@ -116,3 +116,14 @@ class DownloadReturn(BaseModel):
     success: bool
     message: str
     file_name: Optional[str] = None
+
+
+class WebSearchParagraphRequest(BaseModel):
+    plan_title: str
+    section_title: str
+    subtitle_title: str
+
+
+class WebSearchParagraphReturn(BaseModel):
+    success: bool = True
+    web_search_infos: list[dict]

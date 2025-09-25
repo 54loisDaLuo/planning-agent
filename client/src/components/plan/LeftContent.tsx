@@ -26,6 +26,15 @@ interface LeftContentProps {
   onRewriteContent: () => void;
   isRewritingContent: boolean;
   onOutlineUpdate: (outline: any) => void;
+  // 联网搜索
+  onWebSearchResults?: (
+    results: Array<{
+      url: string;
+      title: string;
+      content: string;
+      score: number;
+    }>
+  ) => void;
 }
 
 const LeftContent = ({
@@ -40,6 +49,7 @@ const LeftContent = ({
   onRewriteContent,
   isRewritingContent,
   onOutlineUpdate,
+  onWebSearchResults, // web search
 }: LeftContentProps) => {
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -67,6 +77,7 @@ const LeftContent = ({
                   initialContentData={fullContent.content}
                   planTitle={data.title}
                   policyContext={data.policy}
+                  onWebSearchResults={onWebSearchResults} // web search
                 />
               )
             )

@@ -110,6 +110,7 @@ async def router_rewrite_outline(req: RewriteOutlineRequest):
                 -> title: str (description="用户输入的标题")
                     ,selectedKbList: List[KnowledgeBaseFile](description="用户选择的知识库")
                     ,outline: str(description="用户输入的大纲")
+                    ,context: str(description="用户输入的上下文")
     :return: RewriteOutlineReturn
                 -> success: bool
                     ,title: str(description="用户输入的标题")
@@ -126,7 +127,6 @@ async def router_rewrite_outline(req: RewriteOutlineRequest):
             "selectedKbList": [kb.model_dump() for kb in req.selectedKbList],
             "policy": "",
             "outline": req.outline,
-            # outline is not needed for input
         }
 
         final_state = await rewrite_outline_graph_app.ainvoke(initial_state)

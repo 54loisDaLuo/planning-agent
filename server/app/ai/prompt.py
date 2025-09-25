@@ -580,5 +580,25 @@ class Prompt:
         ]
 
     @staticmethod
+    def web_search_content_paragraph_prompt(
+        plan_title: str,
+        section_title: str,
+        subtitle_title: str,
+    ) -> str:
+        """
+         重写具体段落文本，启用web search
+        :param plan_title: 专项规划标题
+        :param section_title: 一级标题
+        :param subtitle_title: 二级标题
+        :return: 搜索提示
+        """
+        query = f"""**标题**:${plan_title} \n
+                    **大纲**：\n
+                        - 当前章节（一级标题）：『{section_title}』\n
+                        - 当前小节（二级标题）：『{subtitle_title}』\n\n
+                   **要求**:检索与标题和大纲相关的文章\n"""
+        return query
+
+    @staticmethod
     def get_test_prompt() -> list[dict]:
         return [{"role": "user", "content": "你好"}]
