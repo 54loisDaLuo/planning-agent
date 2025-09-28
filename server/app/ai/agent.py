@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from .prompt import Prompt
 from ..api.schemas import KnowledgeBaseFile
 import logging
+import asyncio
 
 from tavily import TavilyClient
 
@@ -318,32 +319,63 @@ class OutlineAgent:
             print(f"[错误] 调用AI重写章节时出错: {e}")
             return {"error": str(e)}
 
-    # def generate_outline(self, title: str, kb_abstract: str):
-    #     messages = Prompt.get_outline_prompt(title, kb_abstract)
-    #     try:
-    #         completion = self.client.chat.completions.create(
-    #             model=self.model_name,
-    #             messages=messages,
-    #             response_format={"type": "json_object"},
-    #         )
-    #         outline_str = completion.choices[0].message.content
+    def generate_outline(self, title: str, kb_abstract: str):
+        messages = Prompt.get_outline_prompt(title, kb_abstract)
+        try:
+            completion = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                response_format={"type": "json_object"},
+            )
+            outline_str = completion.choices[0].message.content
 
-    #         parsed_json = json.loads(outline_str)
-    #         print("--- AI返回并解析后的JSON对象 ---")
-    #         print(parsed_json)
+            parsed_json = json.loads(outline_str)
+            print("--- AI返回并解析后的JSON对象 ---")
+            print(parsed_json)
 
-    #         # Robustness fix: If the AI returns a single object instead of a list, wrap it in a list.
-    #         if isinstance(parsed_json, dict):
-    #             return [parsed_json]
+            # Robustness fix: If the AI returns a single object instead of a list, wrap it in a list.
+            if isinstance(parsed_json, dict):
+                return [parsed_json]
 
-    #         return parsed_json
+            return parsed_json
 
-    #     except json.JSONDecodeError:
-    #         print(f"[错误] AI返回的大纲不是有效的JSON格式: {outline_str}")
-    #         return []
-    #     except Exception as e:
-    #         print(f"[错误] 调用AI生成大纲时出错: {e}")
-    #         return []
+        except json.JSONDecodeError:
+            print(f"[错误] AI返回的大纲不是有效的JSON格式: {outline_str}")
+            return []
+        except Exception as e:
+            print(f"[错误] 调用AI生成大纲时出错: {e}")
+            return []
+
+    async def generate_outline_stream(
+        self, title: str, kb_abstract: str
+    ):  # 缩进与上面方法一致
+        """
+        Generates an outline with streaming support.
+        流式生成基于标题和知识库摘要的大纲
+        :param title: 专项规划标题
+        :param kb_abstract: 知识库摘要
+        :return: 生成器，逐token返回大纲内容
+        """
+        messages = Prompt.get_outline_prompt(title, kb_abstract)
+        try:
+            # 使用正确的异步流式调用
+            stream = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                stream=True,
+                temperature=0.7,
+                max_tokens=1000,
+            )
+
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    yield chunk.choices[0].delta.content
+                    # 添加小延迟让流式效果明显
+                    await asyncio.sleep(0.02)
+
+        except Exception as e:
+            print(f"[错误] 流式生成大纲时出错: {e}")
+            yield f"[错误] 生成大纲时发生错误: {str(e)}"
 
 
 class ContentAgent:

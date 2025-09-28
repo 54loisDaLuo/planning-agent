@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import {
   generateOutline,
   generateContent,
+  generateOutlineStream,
   rewriteOutline,
 } from '../../api/generateApi';
 import {
@@ -15,7 +16,7 @@ import RightContent from '@/components/plan/RightContent';
 import LeftContent from '@/components/plan/LeftContent';
 import { useContext } from 'react';
 import { useKnowledgeBase } from '@/contexts/KnowledgeBaseContext';
-import { PageMode } from '@/data/contentTypes';
+import { PageMode, OutlineStruct } from '@/data/contentTypes';
 
 const Plan = () => {
   const searchParams = useSearchParams();
@@ -49,22 +50,133 @@ const Plan = () => {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const [streamingData, setStreamingData] = useState<{
+    policy: string;
+    outline: string;
+    isComplete: boolean;
+  }>({
+    policy: '',
+    outline: '',
+    isComplete: false,
+  });
+  const [isStreaming, setIsStreaming] = useState(false);
+
   useEffect(() => {
     if (title) {
       setLoading(true);
-      generateOutline(title, selectedKbList)
-        .then((res) => {
-          setData(res);
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error('(from Plan index.tsx) API 调用失败:', err);
-          setData(null);
-          setLoading(false);
-        });
+      // 使用流式接口替代原来的同步接口
+      handleStreamOutline();
     }
   }, [title]);
 
+  // 添加这个新的useEffect来处理流式数据的实时显示
+  // 优化这个useEffect，避免过于频繁的更新
+  // 优化这个useEffect，避免过于频繁的更新
+  useEffect(() => {
+    if (isStreaming && streamingData && streamingData.outline) {
+      // 只有在outline有实际变化时才更新data
+      setData((prevData) => {
+        const currentOutline = prevData?.outline;
+        const newOutline = streamingData.outline;
+
+        // 只有当outline确实发生变化时才更新
+        if (currentOutline !== newOutline && newOutline.length > 0) {
+          console.log('更新data.outline，新长度:', newOutline.length);
+          return {
+            ...(prevData || { success: true, title, kb_list: selectedKbList }),
+            outline: newOutline,
+            policy: streamingData.policy,
+          };
+        }
+        return prevData;
+      });
+    }
+  }, [
+    isStreaming,
+    streamingData?.outline,
+    streamingData?.policy,
+    title,
+    selectedKbList,
+  ]);
+
+  const handleStreamOutline = async () => {
+    setLoading(true);
+    setIsStreaming(true);
+    setStreamingData({ policy: '', outline: '', isComplete: false });
+
+    console.log('开始流式生成，标题:', title, '知识库:', selectedKbList);
+
+    try {
+      await generateOutlineStream(
+        title,
+        selectedKbList,
+        (data) => {
+          console.log('收到流式数据:', data);
+          switch (data.type) {
+            case 'policy':
+              setStreamingData((prev) => {
+                console.log(
+                  '更新policy:',
+                  data.content,
+                  '当前policy长度:',
+                  prev.policy.length
+                );
+                return { ...prev, policy: data.content };
+              });
+              break;
+            case 'outline':
+              if (data.token) {
+                setStreamingData((prev) => {
+                  const newOutline = prev.outline + data.token;
+                  console.log(
+                    '更新outline token:',
+                    data.token,
+                    '当前长度:',
+                    newOutline.length
+                  );
+                  return { ...prev, outline: newOutline };
+                });
+              }
+              break;
+            case 'complete_outline':
+              console.log('收到完整大纲');
+              break;
+            case 'complete':
+              setStreamingData((prev) => {
+                console.log('流式传输完成');
+                return { ...prev, isComplete: true };
+              });
+              break;
+          }
+        },
+        (completeData) => {
+          // 使用函数式更新避免闭包问题
+          setStreamingData((currentStreamingData) => {
+            console.log('流式传输完成，最终数据:', currentStreamingData);
+            setData({
+              success: true,
+              title,
+              outline: currentStreamingData.outline,
+              policy: currentStreamingData.policy,
+              kb_list: selectedKbList,
+            });
+            setLoading(false);
+            setIsStreaming(false);
+            return currentStreamingData;
+          });
+        },
+        (error) => {
+          console.error('流式生成失败:', error);
+          setLoading(false);
+          setIsStreaming(false);
+        }
+      );
+    } catch (error) {
+      console.error('启动流式生成失败:', error);
+      setLoading(false);
+      setIsStreaming(false);
+    }
+  };
   // function rewrite outline
   const handleRewriteOutline = async () => {
     if (!data || !data.policy || !data.outline) {
@@ -221,6 +333,10 @@ const Plan = () => {
             isRewritingContent={isRewritingContent}
             onOutlineUpdate={handleOutlineUpdate}
             onWebSearchResults={setWebSearchResults} // 添加这行
+            // 新增：流式数据处理
+            // 新增：流式数据处理
+            streamingData={streamingData}
+            isStreaming={isStreaming}
           />
         </div>
         {/* drag dividing line */}
@@ -256,6 +372,9 @@ const Plan = () => {
             isRewritingContent={isRewritingContent}
             onOutlineUpdate={handleOutlineUpdate}
             onWebSearchResults={setWebSearchResults} // 添加这行
+            // 移动端也需要流式数据
+            streamingData={streamingData}
+            isStreaming={isStreaming}
           />
         </div>
         <div className="bg-white rounded-lg border border-plagt-blue-1 p-6 shadow-sm flex flex-col h-[80vh] min-h-0">

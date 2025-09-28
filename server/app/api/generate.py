@@ -26,6 +26,8 @@ from ..ai.graph.content import app as content_graph_app
 from ..ai.graph.rewrite_outline import app as rewrite_outline_graph_app
 import traceback
 import logging
+from fastapi.responses import StreamingResponse
+import asyncio
 
 generate_router = APIRouter()
 
@@ -100,6 +102,90 @@ async def router_generate_outline(req: GenerateOutlineRequest):
             status_code=500,
             detail=f"生成失败: {str(e)}, (from router_generate_outline, generate.py)",
         )
+
+
+@generate_router.post("/api/outline/stream")
+async def router_generate_outline_stream(req: GenerateOutlineRequest):
+    """
+    修复后的流式大纲生成接口
+    """
+    logging.info(f"router_generate_outline_stream, req:\n{req}")
+
+    async def generate_stream():
+        try:
+            # 初始状态设置
+            initial_state = {
+                "title": req.title,
+                "selectedKbList": [kb.model_dump() for kb in req.selectedKbList],
+                "policy": "",
+            }
+
+            # 执行知识库选择步骤
+            from ..ai.graph.outline import node_select_kb, OutlineState
+
+            state = OutlineState(**initial_state)
+            updated_state = node_select_kb(state)
+
+            # 获取选中的知识库内容
+            from ..kb.utils import KnowledgeBase
+
+            kb = KnowledgeBase()
+            selected_bfs = updated_state.get("selectedKbList", [])
+            selected_kb_contents = kb.get_all_kb_content(selected_bfs)
+
+            # 生成摘要
+            from ..ai.agent import KbAgent
+
+            kb_agent = KbAgent()
+            selected_kb_abstract = kb_agent.abstract_kb_lst(
+                req.title, selected_kb_contents
+            )
+
+            # 先发送政策摘要（立即发送）
+            if selected_kb_abstract:
+                yield f"data: {json.dumps({'type': 'policy', 'content': selected_kb_abstract})}\n\n"
+                # 重要：立即刷新
+                await asyncio.sleep(0.01)
+
+            # 修复：使用异步方式调用流式生成
+            full_outline = ""
+
+            # 方法1：直接使用异步生成器
+            outline_stream = outline_agent.generate_outline_stream(
+                req.title, selected_kb_abstract
+            )
+
+            # 关键修复：正确处理异步生成器
+            async for token in outline_stream:
+                full_outline += token
+                # 立即发送每个token，不要累积
+                yield f"data: {json.dumps({'token': token, 'type': 'outline'})}\n\n"
+                # 小延迟让流式效果明显
+                await asyncio.sleep(0.02)
+
+            # 发送完整大纲和结束信号
+            yield f"data: {json.dumps({'type': 'complete_outline', 'content': full_outline})}\n\n"
+            yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+
+        except Exception as e:
+            error_msg = f"data: {json.dumps({'error': str(e), 'type': 'error'})}\n\n"
+            yield error_msg
+            print(f"流式生成大纲异常: {e}")
+            traceback.print_exc()
+
+    # 修复响应头配置
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
 
 
 @generate_router.post("/api/rewrite/outline")
