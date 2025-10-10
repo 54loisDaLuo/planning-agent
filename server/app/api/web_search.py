@@ -8,7 +8,7 @@ web_search_router = APIRouter()
 web_search_agent = WebSearchAgent()
 
 
-@web_search_router.post("/web_search/paragraph")
+@web_search_router.post("/paragraph")
 async def web_search_content_paragraph(req: WebSearchParagraphRequest):
     """
     段落搜索接口

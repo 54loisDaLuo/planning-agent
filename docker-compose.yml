@@ -9,15 +9,32 @@ services:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
+      - DATABASE_URL=mysql+pymysql://admin:admin123@mysql:3306/planning_agent
 
   frontend:
     build: ./client
     volumes:
       - ./client:/app
-      - /app/node_modules # Note: do NOT mount node_module later 
+      - /app/node_modules # Note: do NOT mount node_module later
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
     depends_on:
       - backend
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: planning_agent
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin123
+    # 移除ports映射，只在Docker网络内部访问
+    # ports:
+    #   - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:

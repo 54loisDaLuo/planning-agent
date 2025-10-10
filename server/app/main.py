@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 from .api import generate, base, web_search
 import logging
+from .api import user
 
 load_dotenv()
 
@@ -32,10 +33,19 @@ app.add_middleware(
 # routers
 app.include_router(generate.generate_router)
 app.include_router(base.base_router, prefix="/api")
-app.include_router(web_search.web_search_router, prefix="/api")
+app.include_router(web_search.web_search_router, prefix="/api/web_search")
+app.include_router(user.router, prefix="/api/user")
 
 
 # test
 @app.get("/ping")
 async def root():
     return {"message": "PONG! Planning Agent API is running!"}
+
+
+@app.on_event("startup")
+async def startup_event():
+    from .mysql.database import create_tables
+
+    create_tables()
+    logging.info("数据库表创建成功")
