@@ -3,13 +3,22 @@ import json
 import re
 from langgraph.graph import StateGraph
 from openai import OpenAI, api_key
-from typing import Any, TypedDict, List
+from typing import Any, TypedDict, List, Optional, Tuple
 import os
 from dotenv import load_dotenv
+from regex import P
 from .prompt import Prompt
 from ..api.schemas import KnowledgeBaseFile
 import logging
 import asyncio
+
+from ..api.schemas import (
+    QARequest,
+    QAResponse,
+    WebSearchResult,
+    LLMKnowledgeResult,
+    ContextAnalysisResult,
+)
 
 from tavily import TavilyClient
 
@@ -552,6 +561,267 @@ class WebSearchAgent:
         print(response["results"])
 
         return response["results"]
+
+
+class QAAgent:
+    """问答Agent - 三路并行架构"""
+
+    def __init__(self):
+        self.tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+        self.client = OpenAI(
+            api_key=os.getenv("API_KEY"),
+            base_url=os.getenv("BASE_URL"),
+        )
+        self.model_name = os.getenv("MODEL_NAME")
+
+    async def ask_question(self, request: QARequest) -> QAResponse:
+        """处理问答请求 - 三路并行处理"""
+
+        # 并行执行三路搜索
+        tasks = []
+        # 路线1（Web搜索）：
+        if request.use_web_search:
+            tasks.append(self.qa_web_search(request.question))
+
+        # 路线2（LLM知识）：
+        if request.use_llm_knowledge:
+            tasks.append(self.qa_llm_knowledge(request.question))
+
+        # # 路线3（上下文分析）：
+        # if request.context:
+        #     tasks.append(
+        #         self.real_qa_context_analysis(request.question, request.context)
+        #     )
+
+        # 等待所有任务完成
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # 处理结果
+        web_search_results = None
+        llm_knowledge_results = None
+        context_analysis_results = None
+
+        for result in results:
+            if isinstance(result, Exception):
+                continue
+            if isinstance(result, list):  # Web搜索返回列表
+                web_search_results = (
+                    [WebSearchResult(**r) for r in result] if result else None
+                )
+            elif isinstance(result, dict) and "knowledge" in result:  # LLM知识
+                llm_knowledge_results = LLMKnowledgeResult(**result)
+            elif isinstance(result, dict) and "analysis" in result:  # 上下文分析
+                context_analysis_results = ContextAnalysisResult(**result)
+
+        # 整合分析生成最终答案
+        final_answer, confidence, evidence_sources = (
+            await self.qa_integrate_and_analyze(
+                request.question,
+                web_search_results,
+                llm_knowledge_results,
+                context_analysis_results,
+            )
+        )
+
+        return QAResponse(
+            final_answer=final_answer,
+            web_search_results=web_search_results,
+            llm_knowledge_results=llm_knowledge_results,
+            context_analysis_results=context_analysis_results,
+            confidence=confidence,
+            evidence_sources=evidence_sources,
+        )
+
+    async def qa_web_search(self, question: str) -> List[Dict]:
+        """路线1: Tavily Web搜索"""
+        try:
+            response = self.tavily_client.search(
+                query=question, search_depth="advanced", max_results=5
+            )
+            results = response.get("results", [])
+            # 转换为标准格式
+            formatted_results = []
+            for result in results:
+                formatted_results.append(
+                    {
+                        "url": result.get("url", ""),
+                        "title": result.get("title", ""),
+                        "content": result.get("content", ""),
+                        "score": result.get("score", 0.0),
+                    }
+                )
+            return formatted_results
+        except Exception as e:
+            print(f"Web搜索错误: {e}")
+            return []
+
+    async def qa_llm_knowledge(self, question: str) -> Dict:
+        """路线2: LLM知识搜索"""
+        try:
+            prompt = Prompt.qa_llm_knowledge_prompt(question)
+
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=prompt,
+                temperature=0.3,
+                max_tokens=800,
+            )
+
+            knowledge = response.choices[0].message.content
+            # 基于回答质量评估置信度
+            confidence = min(len(knowledge) / 1000, 0.95) if knowledge else 0.5
+
+            return {"knowledge": knowledge, "confidence": confidence}
+
+        except Exception as e:
+            print(f"LLM知识搜索错误: {e}")
+            return {"knowledge": "无法获取相关知识", "confidence": 0.1}
+
+    async def qa_context_analysis(self, question: str, context: str) -> Dict:
+        """路线3: 上下文分析"""
+        try:
+            prompt = Prompt.qa_context_analysis_prompt(context, question)
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=prompt,
+                temperature=0.3,
+                max_tokens=600,
+            )
+
+            analysis = response.choices[0].message.content
+            # 基于分析深度评估相关性
+            relevance = min(len(analysis) / 800, 0.95) if analysis else 0.3
+
+            return {"analysis": analysis, "relevance": relevance}
+
+        except Exception as e:
+            print(f"上下文分析错误: {e}")
+            return {"analysis": "上下文分析失败", "relevance": 0.1}
+
+    async def qa_integrate_and_analyze(
+        self,
+        question: str,
+        web_results: Optional[List[WebSearchResult]],
+        llm_results: Optional[LLMKnowledgeResult],
+        context_results: Optional[ContextAnalysisResult],
+    ) -> Tuple[str, float, List[str]]:
+        """整合三路结果并生成最终答案"""
+        try:
+            # 构建整合提示词
+            messages = Prompt.qa_build_integration_prompt(
+                question, web_results, llm_results, context_results
+            )
+
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                temperature=0.2,
+                max_tokens=1200,
+            )
+
+            final_answer = response.choices[0].message.content
+
+            # 计算综合置信度
+            confidence_sources = []
+            if web_results:
+                avg_web_score = (
+                    sum(r.score for r in web_results) / len(web_results)
+                    if web_results
+                    else 0
+                )
+                confidence_sources.append(avg_web_score * 0.4)  # Web搜索权重40%
+
+            if llm_results:
+                confidence_sources.append(
+                    llm_results.confidence * 0.35
+                )  # LLM知识权重35%
+
+            if context_results:
+                confidence_sources.append(
+                    context_results.relevance * 0.25
+                )  # 上下文分析权重25%
+
+            final_confidence = (
+                sum(confidence_sources) / len(confidence_sources)
+                if confidence_sources
+                else 0.5
+            )
+
+            # 提取证据来源
+            evidence_sources = self.qa_extract_evidence_sources(
+                web_results, llm_results, context_results
+            )
+
+            return final_answer, final_confidence, evidence_sources
+
+        except Exception as e:
+            print(f"整合分析错误: {e}")
+            return "抱歉，暂时无法生成完整答案。", 0.3, ["系统错误"]
+
+    #     def _build_integration_prompt(
+    #         self,
+    #         question: str,
+    #         web_results: Optional[List[WebSearchResult]],
+    #         llm_results: Optional[LLMKnowledgeResult],
+    #         context_results: Optional[ContextAnalysisResult],
+    #     ) -> str:
+    #         """构建整合分析提示词"""
+    #         prompt = f"""请基于以下三路信息源，为用户问题生成最准确、最全面的答案。
+
+    # 用户问题：{question}
+
+    # """
+
+    #         # Web搜索结果
+    #         if web_results:
+    #             prompt += "【网络搜索结果】\n"
+    #             for i, result in enumerate(web_results[:3], 1):
+    #                 prompt += f"{i}. {result.title}\n"
+    #                 prompt += f"   内容：{result.content[:150]}...\n"
+    #                 prompt += f"   相关度：{result.score:.2f}\n\n"
+
+    #         # LLM知识结果
+    #         if llm_results:
+    #             prompt += "【专业知识库】\n"
+    #             prompt += f"{llm_results.knowledge}\n"
+    #             prompt += f"置信度：{llm_results.confidence:.2f}\n\n"
+
+    #         # 上下文分析结果
+    #         if context_results:
+    #             prompt += "【上下文分析】\n"
+    #             prompt += f"{context_results.analysis}\n"
+    #             prompt += f"相关性：{context_results.relevance:.2f}\n\n"
+
+    #         prompt += """请生成最终答案，要求：
+    # 1. 综合所有可用信息
+    # 2. 优先采用高置信度的信息源
+    # 3. 明确标注信息来源
+    # 4. 如果信息冲突，说明不同观点
+    # 5. 给出最合理的结论
+
+    # 请开始生成最终答案："""
+
+    #         return prompt
+
+    def qa_extract_evidence_sources(
+        self,
+        web_results: Optional[List[WebSearchResult]],
+        llm_results: Optional[LLMKnowledgeResult],
+        context_results: Optional[ContextAnalysisResult],
+    ) -> List[str]:
+        """提取证据来源"""
+        sources = []
+
+        if web_results:
+            sources.append(f"网络搜索结果：{len(web_results)}条")
+
+        if llm_results and llm_results.confidence > 0.3:
+            sources.append("专业知识库")
+
+        if context_results and context_results.relevance > 0.3:
+            sources.append("上下文分析")
+
+        return sources if sources else ["信息不足"]
 
 
 # test

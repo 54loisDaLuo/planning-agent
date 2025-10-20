@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
-from .api import generate, base, web_search
+from .api import generate, base, web_search, qa
 import logging
 from .api import user
 
@@ -35,6 +35,7 @@ app.include_router(generate.generate_router)
 app.include_router(base.base_router, prefix="/api")
 app.include_router(web_search.web_search_router, prefix="/api/web_search")
 app.include_router(user.router, prefix="/api/user")
+app.include_router(qa.qa_router, prefix="/api/qa")
 
 
 # test

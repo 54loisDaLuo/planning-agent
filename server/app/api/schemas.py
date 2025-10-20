@@ -127,3 +127,36 @@ class WebSearchParagraphRequest(BaseModel):
 class WebSearchParagraphReturn(BaseModel):
     success: bool = True
     web_search_infos: list[dict]
+
+
+class QARequest(BaseModel):
+    question: str
+    use_web_search: bool = True
+    use_llm_knowledge: bool = True
+    context: Optional[str] = None
+
+
+class WebSearchResult(BaseModel):
+    url: str
+    title: str
+    content: str
+    score: float
+
+
+class LLMKnowledgeResult(BaseModel):
+    knowledge: str
+    confidence: float
+
+
+class ContextAnalysisResult(BaseModel):
+    analysis: str
+    relevance: float
+
+
+class QAResponse(BaseModel):
+    final_answer: str
+    web_search_results: Optional[List[WebSearchResult]] = None
+    llm_knowledge_results: Optional[LLMKnowledgeResult] = None
+    context_analysis_results: Optional[ContextAnalysisResult] = None
+    confidence: float
+    evidence_sources: List[str]

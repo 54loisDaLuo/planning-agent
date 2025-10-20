@@ -42,3 +42,32 @@ export interface StreamingOutlineResponse {
   policy: string;
   kb_list: KnowledgeBaseFile[];
 }
+
+// 实时问答类型定义
+export interface LLMKnowledgeResult {
+  knowledge: string;
+  confidence: number;
+}
+
+export interface ContextAnalysisResult {
+  analysis: string;
+  relevance: number;
+}
+
+export interface QAResult {
+  final_answer: string;
+  web_search_results?: Array<{
+    url: string;
+    title: string;
+    content: string;
+    score: number;
+  }>;
+  llm_knowledge_results?: LLMKnowledgeResult; // 改为对象类型
+  context_analysis_results?: ContextAnalysisResult; // 改为对象类型
+  confidence: number;
+  evidence_sources: string[]; // 添加缺失的字段
+}
+
+export interface QARequest {
+  question: string;
+}

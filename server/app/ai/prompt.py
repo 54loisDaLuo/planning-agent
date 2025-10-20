@@ -1,3 +1,6 @@
+from typing import Optional, List, Dict
+from ..api.schemas import WebSearchResult, LLMKnowledgeResult, ContextAnalysisResult
+
 # system prompt
 SYSTEM_PROMPT = "你是一个政策研究专家"
 
@@ -602,3 +605,94 @@ class Prompt:
     @staticmethod
     def get_test_prompt() -> list[dict]:
         return [{"role": "user", "content": "你好"}]
+
+    @staticmethod
+    def qa_build_integration_prompt(
+        question: str,
+        web_results: Optional[List[WebSearchResult]],
+        llm_results: Optional[LLMKnowledgeResult],
+        context_results: Optional[ContextAnalysisResult],
+    ) -> list[dict]:
+        """构建整合分析提示词"""
+        prompt = f"""请基于以下三路信息源，为用户问题生成最准确、最全面的答案。
+
+        用户问题：{question}
+
+        """
+
+        # Web搜索结果
+        if web_results:
+            prompt += "【网络搜索结果】\n"
+            for i, result in enumerate(web_results[:3], 1):
+                prompt += f"{i}. {result.title}\n"
+                prompt += f"   内容：{result.content[:150]}...\n"
+                prompt += f"   相关度：{result.score:.2f}\n\n"
+
+        # LLM知识结果
+        if llm_results:
+            prompt += "【专业知识库】\n"
+            prompt += f"{llm_results.knowledge}\n"
+            prompt += f"置信度：{llm_results.confidence:.2f}\n\n"
+
+        # 上下文分析结果
+        if context_results:
+            prompt += "【上下文分析】\n"
+            prompt += f"{context_results.analysis}\n"
+            prompt += f"相关性：{context_results.relevance:.2f}\n\n"
+
+        prompt += """请生成最终答案，要求：
+1. 综合所有可用信息
+2. 优先采用高置信度的信息源
+3. 明确标注信息来源
+4. 如果信息冲突，说明不同观点
+5. 给出最合理的结论
+
+请开始生成最终答案："""
+        messages = [
+            {
+                "role": "system",
+                "content": "你是一个专业的整合分析助手，能够综合多源信息给出最佳答案。",
+            },
+            {"role": "user", "content": prompt},
+        ]
+
+        return messages
+
+    @staticmethod
+    def qa_context_analysis_prompt(context: str, question: str) -> list[dict]:
+        prompt = f"""基于以下上下文信息分析问题：
+
+    上下文：{context}
+
+    问题：{question}
+
+    请分析：
+    1. 问题与上下文的关联性
+    2. 基于上下文的专业建议
+    3. 可能的解决方案
+
+    请开始分析："""
+        return [
+            {"role": "system", "content": "你是一个专业的上下文分析助手。"},
+            {"role": "user", "content": prompt},
+        ]
+
+    @staticmethod
+    def qa_llm_knowledge_prompt(question: str) -> list[dict]:
+        prompt = f"""基于你的专业知识回答以下问题，请提供准确、权威的信息：
+
+问题：{question}
+
+请按照以下格式回答：
+1. 核心知识点
+2. 相关背景信息
+3. 专业建议
+
+请开始回答："""
+        return [
+            {
+                "role": "system",
+                "content": "你是一个专业的问答助手，拥有广泛的知识库。",
+            },
+            {"role": "user", "content": prompt},
+        ]

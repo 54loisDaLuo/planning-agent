@@ -3,6 +3,7 @@ import {
   OutlineStruct,
   OutlineSection,
 } from '@/data/contentTypes';
+import { QARequest, QAResponse } from '@/data/generateTypes';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -240,4 +241,21 @@ export const webSearchParagraph = async (
   });
   if (!res.ok) throw new Error('联网搜索失败: generateApi.ts');
   return await res.json(); // Returns { success: boolean, web_search_infos: list[dict] }
+};
+
+// 实时问答接口 - 使用类型定义
+export const askQuestion = async (question: string): Promise<QAResult> => {
+  const request: QARequest = { question };
+
+  const res = await fetch(`${API_BASE_URL}/api/qa/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!res.ok) {
+    throw new Error(`问答请求失败: ${res.statusText}`);
+  }
+
+  return await res.json();
 };
